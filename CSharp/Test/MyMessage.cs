@@ -3,9 +3,14 @@
 namespace Test
 {
     [Protoserial.Message]
-    struct MyMessage
+    class MyMessage : ParentMessage
     {
-        public int? varInteger;
+        public int? varIntegerNullable;
+        public int varInteger;
+        public long varLong;
+        public uint varUint;
         public string varString;
+        public float varFloat;
+        public OtherMessage varOther;
     }
 }

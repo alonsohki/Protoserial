@@ -3,7 +3,7 @@
 
 namespace Protoserial
 {
-    [AttributeUsage(AttributeTargets.Struct)]
+    [AttributeUsage(AttributeTargets.Struct|AttributeTargets.Class)]
     public class Message : System.Attribute
     {
     }

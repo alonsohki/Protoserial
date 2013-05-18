@@ -25,22 +25,40 @@ namespace Protoserial
     class DictionaryEntry
     {
         public NameHash Hash;
+        public Type Type;
         public List<FieldData> Fields;
     }
 
     public class Manager
     {
         private readonly Dictionary<Type, DictionaryEntry> mTypes = new Dictionary<Type, DictionaryEntry>();
-  
-        public void RegisterMessageType ( Type type )
+        private readonly Dictionary<Type, ISerializationMethod> mMethods = new Dictionary<Type, ISerializationMethod>();
+
+        public Manager()
+        {
+            AddMethod(typeof (Int32), new Methods.SerializeInt32());
+            AddMethod(typeof (UInt32), new Methods.SerializeUInt32());
+            AddMethod(typeof (Int64), new Methods.SerializeInt64());
+            AddMethod(typeof (UInt64), new Methods.SerializeUInt64());
+            AddMethod(typeof (float), new Methods.SerializeFloat());
+            AddMethod(typeof (double), new Methods.SerializeDouble());
+            AddMethod(typeof (string), new Methods.SerializeString());
+        }
+
+        public void AddMethod(Type type, ISerializationMethod method)
+        {
+            mMethods.Add(type, method);
+        }
+
+        public void RegisterMessageType(Type type)
         {
             var attrs = type.GetCustomAttributes(true).OfType<Message>();
-            if ( attrs.Any() )
+            if (attrs.Any())
             {
                 // Get the hash from the type name, and check for collisions
                 ushort hash = Crc16.Calc(type.Name);
                 bool collided = false;
-                foreach ( var item in mTypes.Keys )
+                foreach (var item in mTypes.Keys)
                 {
                     var value = mTypes[item];
                     if (value.Hash.OriginalHash == hash)
@@ -52,14 +70,15 @@ namespace Protoserial
                 }
 
                 var entry = new DictionaryEntry
-                {
-                    Hash =
-                    {
-                        OriginalHash = hash,
-                        ActualHash = collided ? (ushort) 0 : hash,
-                        Name = type.Name
-                    }
-                };
+                                {
+                                    Type = type,
+                                    Hash =
+                                        {
+                                            OriginalHash = hash,
+                                            ActualHash = collided ? (ushort) 0 : hash,
+                                            Name = type.Name
+                                        }
+                                };
 
                 // Find all the type members and add them
                 var fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy);
@@ -73,7 +92,7 @@ namespace Protoserial
             }
         }
 
-        public void Serialize ( object obj, Stream into )
+        public void Serialize(object obj, Stream into)
         {
             Type type = obj.GetType();
             if (mTypes.ContainsKey(type) == false)
@@ -83,8 +102,83 @@ namespace Protoserial
 
             // Write the object type name
             WriteHash(entry.Hash, into);
+
+            // Write all the fields
+            foreach (var field in entry.Fields)
+            {
+                var value = field.Info.GetValue(obj);
+                if (value == null)
+                {
+                    if (field.Required)
+                        throw new RequiredFieldException(field.Info.Name);
+                }
+                else
+                {
+                    type = field.Info.FieldType;
+
+                    // Handle nullable types
+                    if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof (Nullable<>))
+                    {
+                        var enclosedType = type.GetGenericArguments()[0];
+                        value = type.GetProperty("Value").GetValue(value);
+                        type = enclosedType;
+                    }
+
+                    WriteHash(field.Hash, into);
+                    WriteValue(type, value, into);
+                }
+            }
+
+            // Write an empty hash to mark end of object
+            var writer = new BinaryWriter(into);
+            writer.Write((UInt16)0);
+            writer.Write("");
         }
 
+        public object Deserialize(Stream from)
+        {
+            NameHash hash = ReadHash(from);
+            object o = null;
+
+            // Instantiate the object from its hash
+            var entry = GetEntryForHash(hash);
+            if ( entry != null )
+            {
+                o = Activator.CreateInstance(entry.Type);
+
+                // Read all the fields
+                while (true)
+                {
+                    hash = ReadHash(from);
+                    // If we detected an empty hash, mark end of object
+                    if (hash.ActualHash == 0 && hash.Name.Length == 0)
+                        break;
+
+                    FieldData data = GetFieldForHash(hash, entry);
+                    if (data != null)
+                    {
+                        var type = data.Info.FieldType;
+
+                        // Handle nullable types
+                        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof (Nullable<>))
+                        {
+                            var enclosedType = type.GetGenericArguments()[0];
+                            var value = ReadValue(enclosedType, from);
+                            if (value != null)
+                            {
+                                data.Info.SetValue(o, value);
+                            }
+                        }
+                        else
+                        {
+                            data.Info.SetValue(o, ReadValue(type, from));
+                        }
+                    }
+                }
+            }
+
+            return o;
+        }
 
 
 
@@ -119,7 +213,8 @@ namespace Protoserial
                 bool required = true;
                 if (field.FieldType.GetCustomAttribute<Required>() == null)
                 {
-                    if (field.FieldType.IsGenericType && field.FieldType.GetGenericTypeDefinition() == typeof(Nullable<>))
+                    if (field.FieldType.IsGenericType &&
+                        field.FieldType.GetGenericTypeDefinition() == typeof (Nullable<>))
                     {
                         required = false;
                     }
@@ -131,38 +226,117 @@ namespace Protoserial
             }
         }
 
-        private static void WriteHash ( NameHash hash, Stream into )
+        private static void WriteHash(NameHash hash, Stream into)
         {
+            BinaryWriter writer = new BinaryWriter(into);
             bool hasAHash = hash.ActualHash != 0;
-            WriteUInt32Variant(hash.ActualHash, into);
+            writer.Write(hash.ActualHash);
 
             // Having a hash of 0 means that this entity had hash collisions, so we
             // will write the full name.
-            if ( hash.ActualHash == 0 )
+            if (hash.ActualHash == 0)
             {
-                WriteUInt32Variant((uint)hash.Name.Length, into);
-                byte[] bytes = System.Text.Encoding.ASCII.GetBytes(hash.Name);
-                into.Write(bytes, 0, bytes.Length);
+                writer.Write(hash.Name);
             }
         }
 
-
-        private static void WriteUInt32Variant(uint value, Stream stream)
+        private static NameHash ReadHash(Stream from)
         {
-            bool hasMoreBytes = false;
-            do
+            BinaryReader reader = new BinaryReader(from);
+            NameHash hash = new NameHash();
+            hash.ActualHash = reader.ReadUInt16();
+            if (hash.ActualHash == 0)
             {
-                byte byteToBeWritten = (byte)((value & 0x7F) | 0x80);
-
-                hasMoreBytes = (value >>= 7) != 0;
-
-                if (!hasMoreBytes)
-                {
-                    byteToBeWritten &= 0x7F;
-                }
-
-                stream.WriteByte(byteToBeWritten);
-            } while (hasMoreBytes);
+                hash.Name = reader.ReadString();
+            }
+            return hash;
         }
+
+        private void WriteValue(Type type, object value, Stream into)
+        {
+            if (mMethods.ContainsKey(type))
+            {
+                mMethods[type].Write(value, into);
+            }
+            else if (mTypes.ContainsKey(type))
+            {
+                Serialize(value, into);
+            }
+            else
+            {
+                throw new UnknownTypeException(type.Name);
+            }
+        }
+
+        private object ReadValue(Type type, Stream from)
+        {
+            if (mMethods.ContainsKey(type))
+            {
+                return mMethods[type].Read(from);
+            }
+            else if (mTypes.ContainsKey(type))
+            {
+                return Deserialize(from);
+            }
+            else
+            {
+                throw new UnknownTypeException(type.Name);
+            }
+        }
+
+        private DictionaryEntry GetEntryForHash(NameHash hash)
+        {
+            if (hash.ActualHash == 0)
+            {
+                if (hash.Name.Length == 0)
+                    throw new UnknownTypeException("");
+
+                foreach (var cur in mTypes)
+                {
+                    if (cur.Value.Hash.Name.Equals(hash.Name))
+                    {
+                        return cur.Value;
+                    }
+                }
+            }
+            else
+            {
+                foreach (var cur in mTypes)
+                {
+                    if (cur.Value.Hash.ActualHash == hash.ActualHash)
+                    {
+                        return cur.Value;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private FieldData GetFieldForHash(NameHash hash, DictionaryEntry entry )
+        {
+            if ( hash.ActualHash == 0 )
+            {
+                if (hash.Name.Length == 0)
+                    throw new UnknownTypeException("");
+
+                foreach ( var field in entry.Fields )
+                {
+                    if (field.Hash.Name.Equals(hash.Name))
+                        return field;
+                }
+            }
+            else
+            {
+                foreach ( var field in entry.Fields )
+                {
+                    if (field.Hash.ActualHash == hash.ActualHash)
+                        return field;
+                }
+            }
+
+            return null;
+        }
+
     }
 }

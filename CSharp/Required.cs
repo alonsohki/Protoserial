@@ -2,7 +2,7 @@
 
 namespace Protoserial
 {
-    [AttributeUsage(AttributeTargets.Struct)]
+    [AttributeUsage(AttributeTargets.Field)]
     public class Required : System.Attribute
     {
     }

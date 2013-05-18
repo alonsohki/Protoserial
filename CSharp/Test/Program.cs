@@ -22,6 +22,7 @@ namespace Test
             msg.varLong = 99999999999999;
             msg.varUint = 200;
             msg.varOther.varXXX = 100;
+            msg.requiredField = "";
 
             var into = new FileStream("output.txt", FileMode.Create);
             manager.Serialize(msg, into);

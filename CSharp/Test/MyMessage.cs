@@ -12,5 +12,7 @@ namespace Test
         public string varString;
         public float varFloat;
         public OtherMessage varOther;
+
+        [Required] public string requiredField;
     }
 }

@@ -70,15 +70,15 @@ namespace Protoserial
                 }
 
                 var entry = new DictionaryEntry
-                                {
-                                    Type = type,
-                                    Hash =
-                                        {
-                                            OriginalHash = hash,
-                                            ActualHash = collided ? (ushort) 0 : hash,
-                                            Name = type.Name
-                                        }
-                                };
+                {
+                    Type = type,
+                    Hash =
+                        {
+                            OriginalHash = hash,
+                            ActualHash = collided ? (ushort) 0 : hash,
+                            Name = type.Name
+                        }
+                };
 
                 // Find all the type members and add them
                 var fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy);
@@ -210,16 +210,7 @@ namespace Protoserial
                     newField.Hash.ActualHash = 0;
                 }
 
-                bool required = true;
-                if (field.FieldType.GetCustomAttribute<Required>() == null)
-                {
-                    if (field.FieldType.IsGenericType &&
-                        field.FieldType.GetGenericTypeDefinition() == typeof (Nullable<>))
-                    {
-                        required = false;
-                    }
-                }
-                newField.Required = required;
+                newField.Required = field.GetCustomAttribute<Required>() != null;
                 newField.Info = field;
 
                 into.Add(newField);

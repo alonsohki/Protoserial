@@ -10,8 +10,8 @@ namespace Protoserial
 {
     struct NameHash
     {
-        public ushort OriginalHash;
-        public ushort ActualHash;
+        public short OriginalHash;
+        public short ActualHash;
         public string Name;
     }
 
@@ -58,7 +58,7 @@ namespace Protoserial
             if (attrs.Any())
             {
                 // Get the hash from the type name, and check for collisions
-                ushort hash = Crc16.Calc(type.Name);
+                short hash = Crc16.Calc(type.Name);
                 bool collided = false;
                 foreach (var item in mTypes.Keys)
                 {
@@ -77,7 +77,7 @@ namespace Protoserial
                     Hash =
                         {
                             OriginalHash = hash,
-                            ActualHash = collided ? (ushort) 0 : hash,
+                            ActualHash = collided ? (short) 0 : hash,
                             Name = type.Name
                         }
                 };
@@ -193,7 +193,7 @@ namespace Protoserial
 
             foreach (var field in fields)
             {
-                ushort hash = Crc16.Calc(field.Name);
+                short hash = Crc16.Calc(field.Name);
 
                 var newField = new FieldData();
                 newField.Hash.OriginalHash = hash;
@@ -245,7 +245,7 @@ namespace Protoserial
             from.Read(bytes, 0, 2);
             if (!BitConverter.IsLittleEndian)
                 Array.Reverse(bytes);
-            hash.ActualHash = BitConverter.ToUInt16(bytes, 0);
+            hash.ActualHash = BitConverter.ToInt16(bytes, 0);
 
             if (hash.ActualHash == 0)
             {

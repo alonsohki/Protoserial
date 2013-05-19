@@ -43,7 +43,7 @@ namespace Protoserial
             0x8201, 0x42C0, 0x4380, 0x8341, 0x4100, 0x81C1, 0x8081, 0x4040,
         };
 	
-        public static ushort Calc ( byte[] data, uint offset, uint count )
+        public static short Calc ( byte[] data, uint offset, uint count )
         {
     	    uint crc = 0x0000;
             for ( uint i = offset; i < (offset+count); ++i )
@@ -51,10 +51,10 @@ namespace Protoserial
                 crc = (crc >> 8) ^ table[((crc ^ data[i]) & 0xff)];
             }
 
-            return (ushort) crc;
+            return (short) crc;
         }
 
-        public static ushort Calc ( string str )
+        public static short Calc ( string str )
         {
             byte[] b2 = System.Text.Encoding.ASCII.GetBytes(str);
             return Calc(b2, 0, (uint)b2.Length);

@@ -1,3 +1,7 @@
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+
 import com.conditionracer.protoserial.*;
 
 public class Program
@@ -10,6 +14,15 @@ public class Program
 		manager.RegisterMessageType(OtherMessage.class);
 		manager.RegisterMessageType(ParentMessage.class);
 		
-		System.out.println("Hello world");
+		try {
+			FileInputStream from = new FileInputStream ( "output.txt" );
+			@SuppressWarnings("unused")
+			MyMessage msg = (MyMessage) manager.Deserialize ( from );
+			from.close();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 }

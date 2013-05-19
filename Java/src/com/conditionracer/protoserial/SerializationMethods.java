@@ -1,124 +1,204 @@
 package com.conditionracer.protoserial;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import com.conditionracer.protoserial.Manager.MethodType;
+
 public class SerializationMethods
 {
-	public static void RegisterMethods ( Manager manager )
+	@SuppressWarnings("resource")
+	public static void RegisterMethods ( Manager manager ) throws SerializationMethodCollisionException
 	{
-		manager.AddMethod(Short.class, new ISerializationMethod ()
+		// Int16
+		ISerializationMethod shortMethod = new ISerializationMethod ()
 		{
+			@Override public int GetMethodID () { return 10; }
+			
 			@Override
-			public Object Read(InputStream from, boolean unsigned) throws IOException
+			public Object Read(InputStream from) throws IOException
 			{
 				BigEndianDataInputStream reader = new BigEndianDataInputStream(from);
-				if ( unsigned )
-					return new Short((short)reader.readUnsignedShort());
-				else
-					return new Short(reader.readShort());
+				return new Short(reader.readShort());
 			}
 
 			@Override
-			public void Write(Object obj, OutputStream to, boolean unsigned) throws IOException
+			public void Write(Object obj, OutputStream to) throws IOException
 			{
-				DataOutputStream writer = new DataOutputStream(to);
+				BigEndianDataOutputStream writer = new BigEndianDataOutputStream(to);
 				writer.writeShort((Short)obj);
 			}
-		});
+		};
 		
-		manager.AddMethod(Integer.class, new ISerializationMethod ()
+		// UInt16
+		ISerializationMethod unsignedShortMethod = new ISerializationMethod ()
 		{
+			@Override public int GetMethodID () { return 11; }
+			
 			@Override
-			public Object Read(InputStream from, boolean unsigned) throws IOException
+			public Object Read(InputStream from) throws IOException
 			{
 				BigEndianDataInputStream reader = new BigEndianDataInputStream(from);
-				if ( unsigned )
-					return new Integer(reader.readUnsingedInt());
-				else
-					return new Integer(reader.readInt());
+				return new Short((short) reader.readUnsignedShort());
 			}
 
 			@Override
-			public void Write(Object obj, OutputStream to, boolean unsigned) throws IOException
+			public void Write(Object obj, OutputStream to) throws IOException
 			{
-				DataOutputStream writer = new DataOutputStream(to);
+				BigEndianDataOutputStream writer = new BigEndianDataOutputStream(to);
+				writer.writeUnsignedShort((Short)obj);
+			}
+		};
+
+		// Int32
+		ISerializationMethod integerMethod = new ISerializationMethod ()
+		{
+			@Override public int GetMethodID () { return 12; }
+			
+			@Override
+			public Object Read(InputStream from) throws IOException
+			{
+				BigEndianDataInputStream reader = new BigEndianDataInputStream(from);
+				return new Integer(reader.readInt());
+			}
+
+			@Override
+			public void Write(Object obj, OutputStream to) throws IOException
+			{
+				BigEndianDataOutputStream writer = new BigEndianDataOutputStream(to);
 				writer.writeInt((Integer)obj);
 			}
-		});
+		};
 		
-		manager.AddMethod(Long.class, new ISerializationMethod ()
+		// UInt32
+		ISerializationMethod unsignedIntegerMethod = new ISerializationMethod ()
 		{
+			@Override public int GetMethodID () { return 13; }
+			
 			@Override
-			public Object Read(InputStream from, boolean unsigned) throws IOException
+			public Object Read(InputStream from) throws IOException
 			{
 				BigEndianDataInputStream reader = new BigEndianDataInputStream(from);
-				if ( unsigned )
-					return new Long(reader.readUnsignedLong());
-				else
-					return new Long(reader.readLong());
+				return new Integer(reader.readUnsingedInt());
 			}
 
 			@Override
-			public void Write(Object obj, OutputStream to, boolean unsigned) throws IOException
+			public void Write(Object obj, OutputStream to) throws IOException
 			{
-				DataOutputStream writer = new DataOutputStream(to);
+				BigEndianDataOutputStream writer = new BigEndianDataOutputStream(to);
+				writer.writeUnsignedInt((Integer)obj);
+			}
+		};
+		
+		// Int64
+		ISerializationMethod longMethod = new ISerializationMethod ()
+		{
+			@Override public int GetMethodID () { return 14; }
+			
+			@Override
+			public Object Read(InputStream from) throws IOException
+			{
+				BigEndianDataInputStream reader = new BigEndianDataInputStream(from);
+				return new Long(reader.readLong());
+			}
+
+			@Override
+			public void Write(Object obj, OutputStream to) throws IOException
+			{
+				BigEndianDataOutputStream writer = new BigEndianDataOutputStream(to);
 				writer.writeLong((Long)obj);
 			}
-		});
+		};
 		
-		manager.AddMethod(Float.class, new ISerializationMethod ()
+		// UInt64
+		ISerializationMethod unsignedLongMethod = new ISerializationMethod ()
 		{
+			@Override public int GetMethodID () { return 15; }
+			
 			@Override
-			public Object Read(InputStream from, boolean unsigned) throws IOException
+			public Object Read(InputStream from) throws IOException
+			{
+				BigEndianDataInputStream reader = new BigEndianDataInputStream(from);
+				return new Long(reader.readUnsignedLong());
+			}
+
+			@Override
+			public void Write(Object obj, OutputStream to) throws IOException
+			{
+				BigEndianDataOutputStream writer = new BigEndianDataOutputStream(to);
+				writer.writeUnsignedLong((Long)obj);
+			}
+		};
+
+		// Float
+		ISerializationMethod floatMethod = new ISerializationMethod ()
+		{
+			@Override public int GetMethodID () { return 16; }
+			
+			@Override
+			public Object Read(InputStream from) throws IOException
 			{
 				BigEndianDataInputStream reader = new BigEndianDataInputStream(from);
 				return new Float(reader.readFloat());
 			}
 
 			@Override
-			public void Write(Object obj, OutputStream to, boolean unsigned) throws IOException
+			public void Write(Object obj, OutputStream to) throws IOException
 			{
-				DataOutputStream writer = new DataOutputStream(to);
+				BigEndianDataOutputStream writer = new BigEndianDataOutputStream(to);
 				writer.writeFloat((Float)obj);
 			}
-		});
+		};
 		
-		
-		manager.AddMethod(Double.class, new ISerializationMethod ()
+		// Double
+		ISerializationMethod doubleMethod = new ISerializationMethod ()
 		{
+			@Override public int GetMethodID () { return 17; }
+			
 			@Override
-			public Object Read(InputStream from, boolean unsigned) throws IOException
+			public Object Read(InputStream from) throws IOException
 			{
 				BigEndianDataInputStream reader = new BigEndianDataInputStream(from);
 				return new Double(reader.readDouble());
 			}
 
 			@Override
-			public void Write(Object obj, OutputStream to, boolean unsigned) throws IOException
+			public void Write(Object obj, OutputStream to) throws IOException
 			{
-				DataOutputStream writer = new DataOutputStream(to);
+				BigEndianDataOutputStream writer = new BigEndianDataOutputStream(to);
 				writer.writeDouble((Double)obj);
 			}
-		});
+		};
 		
-		manager.AddMethod(String.class, new ISerializationMethod ()
+		// String
+		ISerializationMethod stringMethod = new ISerializationMethod ()
 		{
+			@Override public int GetMethodID () { return 18; }
+			
 			@Override
-			public Object Read(InputStream from, boolean unsigned) throws IOException
+			public Object Read(InputStream from) throws IOException
 			{
 				BigEndianDataInputStream reader = new BigEndianDataInputStream(from);
 				return reader.readUTF();
 			}
 
 			@Override
-			public void Write(Object obj, OutputStream to, boolean unsigned) throws IOException
+			public void Write(Object obj, OutputStream to) throws IOException
 			{
-				DataOutputStream writer = new DataOutputStream(to);
+				BigEndianDataOutputStream writer = new BigEndianDataOutputStream(to);
+				writer.writeUTF((String)obj);
 			}
-		});
+		};
+		
+		manager.AddMethod(Short.class,   MethodType.TYPE_SIGNED,   shortMethod);
+		manager.AddMethod(Short.class,   MethodType.TYPE_UNSIGNED, unsignedShortMethod);
+		manager.AddMethod(Integer.class, MethodType.TYPE_SIGNED,   integerMethod);
+		manager.AddMethod(Integer.class, MethodType.TYPE_UNSIGNED, unsignedIntegerMethod);
+		manager.AddMethod(Long.class,    MethodType.TYPE_SIGNED,   longMethod);
+		manager.AddMethod(Long.class,    MethodType.TYPE_UNSIGNED, unsignedLongMethod);
+		manager.AddMethod(Float.class,   MethodType.TYPE_SIGNED,   floatMethod);
+		manager.AddMethod(Double.class,  MethodType.TYPE_SIGNED,   doubleMethod);
+		manager.AddMethod(String.class,  MethodType.TYPE_SIGNED,   stringMethod);
 	}
 }

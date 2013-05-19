@@ -6,6 +6,7 @@ import java.io.OutputStream;
 
 public interface ISerializationMethod
 {
-	Object Read ( InputStream from, boolean unsigned ) throws IOException;
-	void Write ( Object obj, OutputStream to, boolean unsigned ) throws IOException;
+	Object Read ( InputStream from ) throws IOException, InstantiationException, IllegalAccessException, UnknownTypeException;
+	void Write ( Object obj, OutputStream to ) throws IOException, UnknownTypeException, RequiredFieldException;
+	int GetMethodID ();
 }

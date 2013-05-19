@@ -100,9 +100,16 @@ public class BigEndianDataInputStream extends InputStream implements DataInput
 	public String readUTF() throws IOException
 	{
 		int length = readUnsignedShort();
-		byte[] b = new byte[length];
-		mInner.read(b);
-		return new String(b, "UTF-8");
+		if ( length > 0 )
+		{
+			byte[] b = new byte[length];
+			mInner.read(b);
+			return new String(b, "UTF-8");
+		}
+		else
+		{
+			return new String();
+		}
 	}
 
 	@Override
@@ -126,8 +133,8 @@ public class BigEndianDataInputStream extends InputStream implements DataInput
 	
 	public int readUnsingedInt() throws IOException
 	{
-		int b = readByte();
-		int value = b & 0x7F;
+		long b = readByte();
+		long value = b & 0x7F;
 		int n = 7;
 		
 		while ( ( b & 0x80 ) == 0x80 )
@@ -137,12 +144,12 @@ public class BigEndianDataInputStream extends InputStream implements DataInput
 			n += 7;
 		}
 		
-		return value;
+		return (int)value;
 	}
 
 	public long readUnsignedLong() throws IOException
 	{
-		int b = readByte();
+		long b = readByte();
 		long value = b & 0x7F;
 		int n = 7;
 		

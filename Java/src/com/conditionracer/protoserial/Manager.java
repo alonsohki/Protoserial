@@ -2,6 +2,8 @@ package com.conditionracer.protoserial;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,6 +13,12 @@ import java.util.Map.Entry;
 @SuppressWarnings("rawtypes")
 public class Manager
 {
+	public enum MethodType
+	{
+		TYPE_SIGNED,
+		TYPE_UNSIGNED
+	}
+	
 	private class NameHash
 	{
 		String Name;
@@ -35,16 +43,35 @@ public class Manager
 	
 	private HashMap<Class, DictionaryEntry> mTypes = new HashMap<Class, DictionaryEntry>();
 	private HashMap<Class, ISerializationMethod> mMethods = new HashMap<Class, ISerializationMethod>();
+	private HashMap<Class, ISerializationMethod> mUnsignedMethods = new HashMap<Class, ISerializationMethod>();
+	private ISerializationMethod[] mMethodsByID = new ISerializationMethod[256];
+	private ISerializationMethod mInnerSerializer;
+    private static byte END_OF_FIELDS_TYPE_ID = 0;
+    private static byte REPEATED_FIELD_TYPE_ID = 1;
 	
-	public Manager ()
+	public Manager () throws SerializationMethodCollisionException
 	{
+        for (int i = 0; i < mMethodsByID.length; ++i)
+            mMethodsByID[i] = null;
+        
+        // Initialize the special inner object serializer
+		mInnerSerializer = new SerializeInnerObject(this);
+		mMethodsByID[mInnerSerializer.GetMethodID()] = mInnerSerializer;
+		
 		SerializationMethods.RegisterMethods(this);
 	}
 	
 	
-	public void AddMethod ( Class type, ISerializationMethod method )
+	public void AddMethod ( Class type, MethodType methodType, ISerializationMethod method ) throws SerializationMethodCollisionException
 	{
-		mMethods.put ( type, method );
+		if ( mMethodsByID[method.GetMethodID()] != null )
+			throw new SerializationMethodCollisionException(type.getName());
+		mMethodsByID[method.GetMethodID()] = method;
+		
+		if ( methodType == MethodType.TYPE_SIGNED )
+			mMethods.put ( type, method );
+		else if ( methodType == MethodType.TYPE_UNSIGNED )
+			mUnsignedMethods.put( type,  method );
 	}
 
 	public void RegisterMessageType ( Class type )
@@ -82,6 +109,74 @@ public class Manager
 		} while ( type != null );
 	}
 	
+	public void Serialize ( Object obj, OutputStream into ) throws IOException, UnknownTypeException, RequiredFieldException
+	{
+		Class type = obj.getClass();
+		if ( mTypes.containsKey(type) == false )
+			throw new UnknownTypeException ( type.getName() );
+		
+		DictionaryEntry entry = mTypes.get(type);
+		
+		// Write the object type name
+		WriteHash ( entry.Hash, into );
+		
+		// Write fields
+		for ( FieldData field : entry.Fields )
+		{
+			into.flush();
+			
+			Object value = null;
+			try {
+				value = field.Info.get(obj);
+			}
+			catch (IllegalArgumentException | IllegalAccessException e)
+			{
+				System.err.println("Error trying to get value from field " + field.Info.getName());
+				e.printStackTrace();
+			}
+			
+			if ( value == null )
+			{
+				if ( field.Required )
+					throw new RequiredFieldException(field.Info.getName());
+			}
+			else
+			{
+				type = field.Info.getType();
+				
+				// Write repeated fields as [REPEATED_FIELD_TYPE_ID][Hash][length][entry type][entries...]
+				if ( type.isArray() )
+				{
+                    into.write(REPEATED_FIELD_TYPE_ID);
+                    WriteHash(field.Hash, into);
+
+                    // Write the array count
+                    int length = Array.getLength(value);
+                    VarIntSerializer.WriteUInt32(length, into);
+                    
+                    // Write the array inner object type id
+                    Class arrayEntryType = type.getComponentType();
+                    WriteTypeID(arrayEntryType, into);
+                    
+                    // Write the array entries
+                    for ( int i = 0; i < length; ++i )
+                    {
+                    	WriteValue ( arrayEntryType, Array.get(value, i), into, field.Unsigned);
+                    }
+				}
+				else
+				{
+					WriteTypeID(type, into);
+					WriteHash(field.Hash, into);
+					WriteValue(type, value, into, field.Unsigned);
+				}
+			}
+		}
+		
+        // Write a byte set to zero to mark the end of the type
+        into.write(END_OF_FIELDS_TYPE_ID);
+	}
+	
 	public Object Deserialize ( InputStream from ) throws IOException, InstantiationException, IllegalAccessException, UnknownTypeException
 	{
 		Object o = null;
@@ -92,17 +187,55 @@ public class Manager
 		{
 			o = entry.Type.newInstance();
 			
-			while ( true )
+			byte typeID;
+			while ( (typeID = ReadTypeID(from)) != END_OF_FIELDS_TYPE_ID && typeID != -1 )
 			{
 				hash = ReadHash ( from );
-				if ( hash.ActualHash == 0 && hash.Name.length() == 0 )
-					break;
-				
 				FieldData data = GetFieldFromHash ( hash, entry.Fields );
-				if ( data != null )
+				if ( data == null )
 				{
-					Object value = ReadValue ( data.Info.getType(), from, data.Unsigned );
-					data.Info.set(o, value);
+                    // Request for a field that we don't know. This probably means that the peer
+                    // is using a newer version of the message and has added new fields. Skip the
+                    // type bytes.
+					
+					int count = 1;
+					if ( typeID == REPEATED_FIELD_TYPE_ID )
+					{
+						count = VarIntSerializer.ReadUInt32(from);
+						typeID = ReadTypeID(from);
+					}
+					
+					if ( mMethodsByID[typeID] == null )
+						throw new UnknownTypeException("");
+					
+					while ( count > 0 )
+					{
+						mMethodsByID[typeID].Read(from);
+						--count;
+					}
+				}
+				else
+				{
+					// Check for repeated fields
+					if ( typeID == REPEATED_FIELD_TYPE_ID )
+					{
+						int count = VarIntSerializer.ReadUInt32(from);
+						typeID = ReadTypeID(from);
+
+						Class componentType = data.Info.getType().getComponentType();
+						Object array = Array.newInstance(componentType, count);
+						for ( int i = 0; i < count; ++i )
+						{
+							Object value = ReadValue ( componentType, from, data.Unsigned );
+							Array.set(array, i, value);
+						}
+						data.Info.set(o, array);
+					}
+					else
+					{
+						Object value = ReadValue ( data.Info.getType(), from, data.Unsigned );
+						data.Info.set(o, value);
+					}
 				}
 			}
 		}
@@ -113,6 +246,7 @@ public class Manager
 	
 	
 	// Private utility methods
+	@SuppressWarnings("resource")
 	private NameHash ReadHash ( InputStream from ) throws IOException
 	{
 		BigEndianDataInputStream reader = new BigEndianDataInputStream ( from );
@@ -123,6 +257,41 @@ public class Manager
 			hash.Name = reader.readUTF();
 		}
 		return hash;
+	}
+	
+	private void WriteHash ( NameHash hash, OutputStream into ) throws IOException
+	{
+		BigEndianDataOutputStream writer = new BigEndianDataOutputStream(into);
+		writer.writeShort(hash.ActualHash);
+		if ( hash.ActualHash == 0 )
+		{
+			writer.writeUTF(hash.Name);
+		}
+	}
+	
+	private byte ReadTypeID ( InputStream from ) throws IOException
+	{
+		return (byte)from.read();
+	}
+	
+	private void WriteTypeID ( Class type, OutputStream into ) throws IOException, UnknownTypeException
+	{
+        if ( mMethods.containsKey(type) )
+        {
+            into.write(mMethods.get(type).GetMethodID());
+        }
+        else if ( mUnsignedMethods.containsKey(type) )
+        {
+        	into.write(mUnsignedMethods.get(type).GetMethodID());
+        }
+        else if ( mTypes.containsKey(type) )
+        {
+            into.write(mInnerSerializer.GetMethodID());
+        }
+        else
+        {
+            throw new UnknownTypeException(type.getName());
+        }
 	}
 	
 	private DictionaryEntry GetEntryFromHash ( NameHash hash )
@@ -204,13 +373,35 @@ public class Manager
 	
 	private Object ReadValue ( Class type, InputStream from, boolean unsigned ) throws InstantiationException, IllegalAccessException, IOException, UnknownTypeException
 	{
-		if ( mMethods.containsKey(type) )
+		if ( !unsigned && mMethods.containsKey(type) )
 		{
-			return mMethods.get(type).Read(from, unsigned);
+			return mMethods.get(type).Read(from);
+		}
+		else if ( unsigned && mUnsignedMethods.containsKey(type) )
+		{
+			return mUnsignedMethods.get(type).Read(from);
 		}
 		else if ( mTypes.containsKey(type) )
 		{
 			return Deserialize ( from );
+		}
+		else
+			throw new UnknownTypeException ( type.getName() );
+	}
+	
+	private void WriteValue ( Class type, Object obj, OutputStream into, boolean unsigned) throws UnknownTypeException, IOException, RequiredFieldException
+	{
+		if ( !unsigned && mMethods.containsKey(type) )
+		{
+			mMethods.get(type).Write(obj, into);
+		}
+		else if ( unsigned && mUnsignedMethods.containsKey(type) )
+		{
+			mUnsignedMethods.get(type).Write(obj, into);
+		}
+		else if ( mTypes.containsKey(type) )
+		{
+			Serialize ( obj, into );
 		}
 		else
 			throw new UnknownTypeException ( type.getName() );

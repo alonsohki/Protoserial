@@ -13,14 +13,17 @@ public class SerializationMethods
 		manager.AddMethod(Short.class, new ISerializationMethod ()
 		{
 			@Override
-			public Object Read(InputStream from) throws IOException
+			public Object Read(InputStream from, boolean unsigned) throws IOException
 			{
 				BigEndianDataInputStream reader = new BigEndianDataInputStream(from);
-				return new Short(reader.readShort());
+				if ( unsigned )
+					return new Short((short)reader.readUnsignedShort());
+				else
+					return new Short(reader.readShort());
 			}
 
 			@Override
-			public void Write(Object obj, OutputStream to) throws IOException
+			public void Write(Object obj, OutputStream to, boolean unsigned) throws IOException
 			{
 				DataOutputStream writer = new DataOutputStream(to);
 				writer.writeShort((Short)obj);
@@ -30,14 +33,17 @@ public class SerializationMethods
 		manager.AddMethod(Integer.class, new ISerializationMethod ()
 		{
 			@Override
-			public Object Read(InputStream from) throws IOException
+			public Object Read(InputStream from, boolean unsigned) throws IOException
 			{
 				BigEndianDataInputStream reader = new BigEndianDataInputStream(from);
-				return new Integer(reader.readInt());
+				if ( unsigned )
+					return new Integer(reader.readUnsingedInt());
+				else
+					return new Integer(reader.readInt());
 			}
 
 			@Override
-			public void Write(Object obj, OutputStream to) throws IOException
+			public void Write(Object obj, OutputStream to, boolean unsigned) throws IOException
 			{
 				DataOutputStream writer = new DataOutputStream(to);
 				writer.writeInt((Integer)obj);
@@ -47,14 +53,17 @@ public class SerializationMethods
 		manager.AddMethod(Long.class, new ISerializationMethod ()
 		{
 			@Override
-			public Object Read(InputStream from) throws IOException
+			public Object Read(InputStream from, boolean unsigned) throws IOException
 			{
 				BigEndianDataInputStream reader = new BigEndianDataInputStream(from);
-				return new Long(reader.readLong());
+				if ( unsigned )
+					return new Long(reader.readUnsignedLong());
+				else
+					return new Long(reader.readLong());
 			}
 
 			@Override
-			public void Write(Object obj, OutputStream to) throws IOException
+			public void Write(Object obj, OutputStream to, boolean unsigned) throws IOException
 			{
 				DataOutputStream writer = new DataOutputStream(to);
 				writer.writeLong((Long)obj);
@@ -64,14 +73,14 @@ public class SerializationMethods
 		manager.AddMethod(Float.class, new ISerializationMethod ()
 		{
 			@Override
-			public Object Read(InputStream from) throws IOException
+			public Object Read(InputStream from, boolean unsigned) throws IOException
 			{
 				BigEndianDataInputStream reader = new BigEndianDataInputStream(from);
 				return new Float(reader.readFloat());
 			}
 
 			@Override
-			public void Write(Object obj, OutputStream to) throws IOException
+			public void Write(Object obj, OutputStream to, boolean unsigned) throws IOException
 			{
 				DataOutputStream writer = new DataOutputStream(to);
 				writer.writeFloat((Float)obj);
@@ -82,14 +91,14 @@ public class SerializationMethods
 		manager.AddMethod(Double.class, new ISerializationMethod ()
 		{
 			@Override
-			public Object Read(InputStream from) throws IOException
+			public Object Read(InputStream from, boolean unsigned) throws IOException
 			{
 				BigEndianDataInputStream reader = new BigEndianDataInputStream(from);
 				return new Double(reader.readDouble());
 			}
 
 			@Override
-			public void Write(Object obj, OutputStream to) throws IOException
+			public void Write(Object obj, OutputStream to, boolean unsigned) throws IOException
 			{
 				DataOutputStream writer = new DataOutputStream(to);
 				writer.writeDouble((Double)obj);
@@ -99,14 +108,14 @@ public class SerializationMethods
 		manager.AddMethod(String.class, new ISerializationMethod ()
 		{
 			@Override
-			public Object Read(InputStream from) throws IOException
+			public Object Read(InputStream from, boolean unsigned) throws IOException
 			{
 				BigEndianDataInputStream reader = new BigEndianDataInputStream(from);
-				return new String();
+				return reader.readUTF();
 			}
 
 			@Override
-			public void Write(Object obj, OutputStream to) throws IOException
+			public void Write(Object obj, OutputStream to, boolean unsigned) throws IOException
 			{
 				DataOutputStream writer = new DataOutputStream(to);
 			}

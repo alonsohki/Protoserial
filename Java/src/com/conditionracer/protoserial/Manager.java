@@ -82,7 +82,7 @@ public class Manager
 		} while ( type != null );
 	}
 	
-	public Object Deserialize ( InputStream from ) throws IOException, InstantiationException, IllegalAccessException
+	public Object Deserialize ( InputStream from ) throws IOException, InstantiationException, IllegalAccessException, UnknownTypeException
 	{
 		Object o = null;
 		NameHash hash = ReadHash ( from );
@@ -92,9 +92,18 @@ public class Manager
 		{
 			o = entry.Type.newInstance();
 			
-			for ( FieldData field : entry.Fields )
+			while ( true )
 			{
+				hash = ReadHash ( from );
+				if ( hash.ActualHash == 0 && hash.Name.length() == 0 )
+					break;
 				
+				FieldData data = GetFieldFromHash ( hash, entry.Fields );
+				if ( data != null )
+				{
+					Object value = ReadValue ( data.Info.getType(), from, data.Unsigned );
+					data.Info.set(o, value);
+				}
 			}
 		}
 		
@@ -137,6 +146,28 @@ public class Manager
 		return null;
 	}
 	
+	private FieldData GetFieldFromHash ( NameHash hash, List<FieldData> fields )
+	{
+		if ( hash.ActualHash == 0 )
+		{
+			for ( FieldData field : fields )
+			{
+				if ( field.Hash.Name.compareTo(hash.Name) == 0 )
+					return field;
+			}
+		}
+		else
+		{
+			for ( FieldData field : fields )
+			{
+				if ( field.Hash.OriginalHash == hash.ActualHash )
+					return field;
+			}
+		}
+		
+		return null;
+	}
+	
 	private void LoadFields ( Field[] fields, List<FieldData> into )
 	{
 		for ( Field field : fields )
@@ -169,5 +200,19 @@ public class Manager
 			
 			into.add(data);
 		}
+	}
+	
+	private Object ReadValue ( Class type, InputStream from, boolean unsigned ) throws InstantiationException, IllegalAccessException, IOException, UnknownTypeException
+	{
+		if ( mMethods.containsKey(type) )
+		{
+			return mMethods.get(type).Read(from, unsigned);
+		}
+		else if ( mTypes.containsKey(type) )
+		{
+			return Deserialize ( from );
+		}
+		else
+			throw new UnknownTypeException ( type.getName() );
 	}
 }

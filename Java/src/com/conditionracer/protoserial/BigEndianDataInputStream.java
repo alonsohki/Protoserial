@@ -40,7 +40,7 @@ public class BigEndianDataInputStream extends InputStream implements DataInput
 	{
 		byte[] b = new byte[8];
 		mInner.read(b);
-		return ByteBuffer.wrap(b).getDouble();
+		return ByteBuffer.wrap(b).order(ByteOrder.LITTLE_ENDIAN).getDouble();
 	}
 
 	@Override
@@ -48,7 +48,7 @@ public class BigEndianDataInputStream extends InputStream implements DataInput
 	{
 		byte[] b = new byte[4];
 		mInner.read(b);
-		return ByteBuffer.wrap(b).getFloat();
+		return ByteBuffer.wrap(b).order(ByteOrder.LITTLE_ENDIAN).getFloat();
 	}
 
 	@Override

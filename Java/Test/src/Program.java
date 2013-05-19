@@ -19,9 +19,7 @@ public class Program
 			@SuppressWarnings("unused")
 			MyMessage msg = (MyMessage) manager.Deserialize ( from );
 			from.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}

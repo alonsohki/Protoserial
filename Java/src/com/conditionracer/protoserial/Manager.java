@@ -23,6 +23,7 @@ public class Manager
 		public NameHash Hash;
 		public Field Info;
 		public boolean Required;
+		public boolean Unsigned;
 	}
 	
 	private class DictionaryEntry
@@ -81,7 +82,7 @@ public class Manager
 		} while ( type != null );
 	}
 	
-	public Object Deserialize ( InputStream from ) throws IOException
+	public Object Deserialize ( InputStream from ) throws IOException, InstantiationException, IllegalAccessException
 	{
 		Object o = null;
 		NameHash hash = ReadHash ( from );
@@ -89,7 +90,12 @@ public class Manager
 		
 		if ( entry != null )
 		{
+			o = entry.Type.newInstance();
 			
+			for ( FieldData field : entry.Fields )
+			{
+				
+			}
 		}
 		
 		return o;
@@ -157,8 +163,9 @@ public class Manager
 			data.Hash.Name = field.getName();
 			data.Hash.ActualHash = collided ? 0 : hash;
 			
-			// Check if it's required
+			// Check if it's required and unsigned
 			data.Required = field.getAnnotation(Required.class) != null;
+			data.Unsigned = field.getAnnotation(Unsigned.class) != null;
 			
 			into.add(data);
 		}

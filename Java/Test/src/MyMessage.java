@@ -6,7 +6,7 @@ public class MyMessage extends ParentMessage
     public Integer varIntegerNullable;
     public Integer varInteger;
     public Long varLong;
-    public Integer varUint;
+    @Unsigned public Integer varUint;
     public String varString;
     public Float varFloat;
     public OtherMessage varOther;

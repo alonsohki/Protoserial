@@ -8,13 +8,13 @@ public class Program
 {
 	public static void main ( String[] args )
 	{
-		Manager manager = new Manager ();
-		
-		manager.RegisterMessageType(MyMessage.class);
-		manager.RegisterMessageType(OtherMessage.class);
-		manager.RegisterMessageType(ParentMessage.class);
-		
 		try {
+			Manager manager = new Manager ();
+			
+			manager.RegisterMessageType(MyMessage.class);
+			manager.RegisterMessageType(OtherMessage.class);
+			manager.RegisterMessageType(ParentMessage.class);
+			
 			FileInputStream from = new FileInputStream ( "output.txt" );
 			@SuppressWarnings("unused")
 			MyMessage msg = (MyMessage) manager.Deserialize ( from );

@@ -11,5 +11,8 @@ public class MyMessage extends ParentMessage
     public Float varFloat;
     public OtherMessage varOther;
 
+    public Integer[] varRepeatedInt;
+    public OtherMessage[] varRepeatedOther;
+    
     @Required public String requiredField;
 }

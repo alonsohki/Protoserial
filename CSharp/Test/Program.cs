@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using Protoserial;
 
 namespace Test
 {
@@ -21,11 +20,12 @@ namespace Test
             msg.varFloat = 1.0f;
             msg.varLong = 99999999999999;
             msg.varUint = 200;
+            msg.varOther = new OtherMessage();
             msg.varOther.varXXX = 100;
             msg.requiredField = "";
 
             var into = new FileStream("output.txt", FileMode.Create);
-            manager.Serialize(msg, into);
+            manager.Serialize(msg, @into);
             into.Close();
 
             var from = new FileStream("output.txt", FileMode.Open);

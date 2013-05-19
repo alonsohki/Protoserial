@@ -37,7 +37,7 @@ namespace Protoserial
             {
                 b = (ushort)from.ReadByte();
                 value <<= 7;
-                value |= (ushort)(b & 0x7F);
+                value |= (ushort)(b & 0x7FU);
             }
             while ((b & 0x80) != 0);
 
@@ -53,7 +53,7 @@ namespace Protoserial
             do
             {
                 b = from.ReadByte();
-                value |= (uint)(b & 0x7F) << n;
+                value |= (uint)(b & 0x7FU) << n;
                 n += 7;
             }
             while ((b & 0x80) != 0);
@@ -70,9 +70,9 @@ namespace Protoserial
             {
                 b = from.ReadByte();
                 value <<= 7;
-                value |= (ulong)(b & 0x7F);
+                value |= (ulong)((ushort)b & 0x7FU);
             }
-            while ((b & 0x80) != 0);
+            while (((ushort)b & 0x80) != 0);
 
             return value;
         }

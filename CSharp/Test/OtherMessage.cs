@@ -3,7 +3,7 @@
 namespace Test
 {
     [Protoserial.Message]
-    struct OtherMessage
+    class OtherMessage
     {
         public long varXXX;
     }

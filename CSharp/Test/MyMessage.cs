@@ -6,9 +6,11 @@ namespace Test
     class MyMessage : ParentMessage
     {
         public int? varIntegerNullable;
+        public ushort varUshort;
+        public short varShort;
+        public uint varUint;
         public int varInteger;
         public long varLong;
-        public uint varUint;
         public string varString;
         public float varFloat;
         public OtherMessage varOther;

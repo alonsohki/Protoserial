@@ -6,6 +6,8 @@ namespace Protoserial.Methods
 {
     class SerializeInt16 : ISerializationMethod
     {
+        public byte GetMethodID() { return 1; }
+
         public object Read(Stream @from)
         {
             byte[] bytes = new byte[2];
@@ -30,6 +32,8 @@ namespace Protoserial.Methods
 
     class SerializeUInt16 : ISerializationMethod
     {
+        public byte GetMethodID() { return 2; }
+
         public object Read(Stream @from)
         {
             return VarIntSerializer.ReadUInt16(@from);
@@ -43,6 +47,8 @@ namespace Protoserial.Methods
 
     class SerializeInt32 : ISerializationMethod
     {
+        public byte GetMethodID() { return 3; }
+
         public object Read(Stream @from)
         {
             byte[] bytes = new byte[4];
@@ -67,6 +73,8 @@ namespace Protoserial.Methods
 
     class SerializeUInt32 : ISerializationMethod
     {
+        public byte GetMethodID() { return 4; }
+
         public object Read(Stream @from)
         {
             return VarIntSerializer.ReadUInt32(@from);
@@ -80,6 +88,8 @@ namespace Protoserial.Methods
 
     class SerializeInt64 : ISerializationMethod
     {
+        public byte GetMethodID() { return 5; }
+
         public object Read(Stream @from)
         {
             byte[] bytes = new byte[8];
@@ -104,6 +114,8 @@ namespace Protoserial.Methods
 
     class SerializeUInt64 : ISerializationMethod
     {
+        public byte GetMethodID() { return 6; }
+
         public object Read(Stream @from)
         {
             return VarIntSerializer.ReadUInt64(@from);
@@ -117,6 +129,8 @@ namespace Protoserial.Methods
 
     class SerializeFloat : ISerializationMethod
     {
+        public byte GetMethodID() { return 7; }
+
         public object Read(Stream @from)
         {
             byte[] bytes = new byte[4];
@@ -133,6 +147,8 @@ namespace Protoserial.Methods
 
     class SerializeDouble : ISerializationMethod
     {
+        public byte GetMethodID() { return 8; }
+
         public object Read(Stream @from)
         {
             byte[] bytes = new byte[8];
@@ -149,6 +165,8 @@ namespace Protoserial.Methods
 
     class SerializeString : ISerializationMethod
     {
+        public byte GetMethodID() { return 9; }
+
         public object Read(Stream @from)
         {
             UInt16 length = VarIntSerializer.ReadUInt16(@from);
@@ -162,6 +180,27 @@ namespace Protoserial.Methods
             byte[] strData = System.Text.Encoding.UTF8.GetBytes ((string)o);
             VarIntSerializer.WriteUInt16((ushort)strData.Length, @into);
             into.Write(strData, 0, strData.Length);
+        }
+    }
+
+    class SerializeInnerObject : ISerializationMethod
+    {
+        private readonly Manager mManager;
+        public SerializeInnerObject ( Manager manager )
+        {
+            mManager = manager;
+        }
+
+        public byte GetMethodID() { return 10; }
+
+        public object Read(Stream @from)
+        {
+            return mManager.Deserialize(@from);
+        }
+
+        public void Write(object o, Stream @into)
+        {
+            mManager.Serialize(o, @into);
         }
     }
 }

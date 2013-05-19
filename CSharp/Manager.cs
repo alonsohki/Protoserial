@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using Protoserial.Methods;
 
 namespace Protoserial
 {
@@ -33,9 +34,18 @@ namespace Protoserial
     {
         private readonly Dictionary<Type, DictionaryEntry> mTypes = new Dictionary<Type, DictionaryEntry>();
         private readonly Dictionary<Type, ISerializationMethod> mMethods = new Dictionary<Type, ISerializationMethod>();
+        private readonly ISerializationMethod[] mMethodsByID = new ISerializationMethod[256];
+        private readonly ISerializationMethod mInnerSerializer;
 
         public Manager()
         {
+            for (int i = 0; i < mMethodsByID.Length; ++i)
+                mMethodsByID[i] = null;
+
+            // Register the inner object serializer (special case)
+            mInnerSerializer = new SerializeInnerObject(this);
+            mMethodsByID[mInnerSerializer.GetMethodID()] = mInnerSerializer;
+
             AddMethod(typeof (Int16), new Methods.SerializeInt16());
             AddMethod(typeof (UInt16), new Methods.SerializeUInt16());
             AddMethod(typeof (Int32), new Methods.SerializeInt32());
@@ -49,6 +59,9 @@ namespace Protoserial
 
         public void AddMethod(Type type, ISerializationMethod method)
         {
+            if ( mMethodsByID[method.GetMethodID()] != null )
+                throw new SerializationMethodCollisionException(type.Name);
+            mMethodsByID[method.GetMethodID()] = method;
             mMethods.Add(type, method);
         }
 
@@ -126,14 +139,14 @@ namespace Protoserial
                         type = enclosedType;
                     }
 
-                    WriteHash(field.Hash, into);
-                    WriteValue(type, value, into);
+                    WriteTypeID(type, @into);
+                    WriteHash(field.Hash, @into);
+                    WriteValue(type, value, @into);
                 }
             }
 
-            // Write an empty hash to mark end of object
-            into.Write(new byte[] {0, 0}, 0, 2);
-            mMethods[typeof(string)].Write("", @into);
+            // Write a byte set to zero to mark the end of the type
+            into.WriteByte(0);
         }
 
         public object Deserialize(Stream from)
@@ -148,14 +161,21 @@ namespace Protoserial
                 o = Activator.CreateInstance(entry.Type);
 
                 // Read all the fields
-                while (true)
+                byte typeID;
+                while ((typeID = ReadTypeID(@from)) != 0)
                 {
                     hash = ReadHash(from);
-                    // If we detected an empty hash, mark end of object
-                    if (hash.ActualHash == 0 && hash.Name.Length == 0)
-                        break;
 
                     FieldData data = GetFieldForHash(hash, entry);
+                    if (data == null)
+                    {
+                        // Request for a field that we don't know. This probably means that the peer
+                        // is using a newer version of the message and has added new fields. Skip the
+                        // type bytes.
+                        if ( mMethodsByID[typeID] == null )
+                            throw new UnknownTypeException("");
+                        mMethodsByID[typeID].Read(@from);
+                    }
                     if (data != null)
                     {
                         var type = data.Info.FieldType;
@@ -218,6 +238,27 @@ namespace Protoserial
             }
         }
 
+        private void WriteTypeID(Type type, Stream @into)
+        {
+            if ( mMethods.ContainsKey(type) )
+            {
+                into.WriteByte(mMethods[type].GetMethodID());
+            }
+            else if ( mTypes.ContainsKey(type) )
+            {
+                into.WriteByte(mInnerSerializer.GetMethodID());
+            }
+            else
+            {
+                throw new UnknownTypeException(type.Name);
+            }
+        }
+
+        private byte ReadTypeID(Stream @from)
+        {
+            return (byte)from.ReadByte();
+        }
+
         private void WriteHash(NameHash hash, Stream into)
         {
             bool hasAHash = hash.ActualHash != 0;
@@ -254,15 +295,15 @@ namespace Protoserial
             return hash;
         }
 
-        private void WriteValue(Type type, object value, Stream into)
+        private void WriteValue(Type type, object value, Stream @into)
         {
             if (mMethods.ContainsKey(type))
             {
-                mMethods[type].Write(value, into);
+                mMethods[type].Write(value, @into);
             }
             else if (mTypes.ContainsKey(type))
             {
-                Serialize(value, into);
+                mInnerSerializer.Write(value, @into);
             }
             else
             {
@@ -270,15 +311,15 @@ namespace Protoserial
             }
         }
 
-        private object ReadValue(Type type, Stream from)
+        private object ReadValue(Type type, Stream @from)
         {
             if (mMethods.ContainsKey(type))
             {
-                return mMethods[type].Read(from);
+                return mMethods[type].Read(@from);
             }
             else if (mTypes.ContainsKey(type))
             {
-                return Deserialize(from);
+                return mInnerSerializer.Read(@from);
             }
             else
             {

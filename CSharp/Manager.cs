@@ -36,6 +36,8 @@ namespace Protoserial
 
         public Manager()
         {
+            AddMethod(typeof (Int16), new Methods.SerializeInt16());
+            AddMethod(typeof (UInt16), new Methods.SerializeUInt16());
             AddMethod(typeof (Int32), new Methods.SerializeInt32());
             AddMethod(typeof (UInt32), new Methods.SerializeUInt32());
             AddMethod(typeof (Int64), new Methods.SerializeInt64());
@@ -130,9 +132,8 @@ namespace Protoserial
             }
 
             // Write an empty hash to mark end of object
-            var writer = new BinaryWriter(into);
-            writer.Write((UInt16)0);
-            writer.Write("");
+            into.Write(new byte[] {0, 0}, 0, 2);
+            mMethods[typeof(string)].Write("", @into);
         }
 
         public object Deserialize(Stream from)
@@ -217,28 +218,38 @@ namespace Protoserial
             }
         }
 
-        private static void WriteHash(NameHash hash, Stream into)
+        private void WriteHash(NameHash hash, Stream into)
         {
-            BinaryWriter writer = new BinaryWriter(into);
             bool hasAHash = hash.ActualHash != 0;
-            writer.Write(hash.ActualHash);
+
+            // Write the hash value
+            byte[] bytes = BitConverter.GetBytes(hash.ActualHash);
+            if (!BitConverter.IsLittleEndian)
+                Array.Reverse(bytes);
+            into.Write(bytes, 0, 2);
 
             // Having a hash of 0 means that this entity had hash collisions, so we
             // will write the full name.
             if (hash.ActualHash == 0)
             {
-                writer.Write(hash.Name);
+                mMethods[typeof(string)].Write(hash.Name, into);
             }
         }
 
-        private static NameHash ReadHash(Stream from)
+        private NameHash ReadHash(Stream from)
         {
-            BinaryReader reader = new BinaryReader(from);
             NameHash hash = new NameHash();
-            hash.ActualHash = reader.ReadUInt16();
+
+            // Read the hash value
+            byte[] bytes = new byte[2];
+            from.Read(bytes, 0, 2);
+            if (!BitConverter.IsLittleEndian)
+                Array.Reverse(bytes);
+            hash.ActualHash = BitConverter.ToUInt16(bytes, 0);
+
             if (hash.ActualHash == 0)
             {
-                hash.Name = reader.ReadString();
+                hash.Name = (string)mMethods[typeof(string)].Read(@from);
             }
             return hash;
         }

@@ -49,6 +49,7 @@
     <Compile Include="RequiredFieldException.cs" />
     <Compile Include="SerializationMethods.cs" />
     <Compile Include="UnknownTypeException.cs" />
+    <Compile Include="VarIntSerializer.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

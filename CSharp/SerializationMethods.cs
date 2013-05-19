@@ -153,7 +153,7 @@ namespace Protoserial.Methods
         {
             byte[] bytes = new byte[8];
             from.Read(bytes, 0, 8);
-            return BitConverter.ToSingle(bytes, 0);
+            return BitConverter.ToDouble(bytes, 0);
         }
 
         public void Write(object o, Stream @into)

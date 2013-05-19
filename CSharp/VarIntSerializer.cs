@@ -21,7 +21,7 @@ namespace Protoserial
             {
                 ulong b = (value & ~0x7FUL) != 0 ? 0x80UL : 0UL;
                 b |= value & 0x7FUL;
-                byte res = (byte)(b & 0xFF);
+                byte res = (byte)(b & 0xFFU);
                 to.WriteByte(res);
 
                 value >>= 7;
@@ -31,13 +31,14 @@ namespace Protoserial
         public static UInt16 ReadUInt16(Stream @from)
         {
             ushort value = 0;
-            ushort b;
+            int b;
+            int n = 0;
 
             do
             {
-                b = (ushort)from.ReadByte();
-                value <<= 7;
-                value |= (ushort)(b & 0x7FU);
+                b = from.ReadByte();
+                value |= (ushort)((b & 0x7FU) << n);
+                n += 7;
             }
             while ((b & 0x80) != 0);
 
@@ -65,14 +66,15 @@ namespace Protoserial
         {
             ulong value = 0;
             int b;
+            int n = 0;
 
             do
             {
                 b = from.ReadByte();
-                value <<= 7;
-                value |= (ulong)((ushort)b & 0x7FU);
+                value |= (ulong)(b & 0x7FU) << n;
+                n += 7;
             }
-            while (((ushort)b & 0x80) != 0);
+            while ((b & 0x80) != 0);
 
             return value;
         }

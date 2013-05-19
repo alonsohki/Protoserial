@@ -14,12 +14,16 @@ namespace Test
 
             MyMessage msg = new MyMessage();
             msg.id = -1;
-            msg.varIntegerNullable = 12;
-            msg.varInteger = 9001;
-            msg.varString = "Hello world";
+            msg.varIntegerNullable = null;
+            msg.varUshort = 1;
+            msg.varShort = -1;
+            msg.varUint = 9001;
+            msg.varInteger = -9001;
+            msg.varUlong = 9999999999999;
+            msg.varLong = -9999999999999;
             msg.varFloat = 1.0f;
-            msg.varLong = 99999999999999;
-            msg.varUint = 200;
+            msg.varDouble = 9421844.442;
+            msg.varString = "Hello world";
             msg.varOther = new OtherMessage();
             msg.varOther.varXXX = 100;
             msg.requiredField = "";

@@ -10,9 +10,11 @@ namespace Test
         public short varShort;
         public uint varUint;
         public int varInteger;
+        public ulong varUlong;
         public long varLong;
-        public string varString;
         public float varFloat;
+        public double varDouble;
+        public string varString;
         public OtherMessage varOther;
 
         [Required] public string requiredField;

@@ -133,5 +133,34 @@ public class Manager
 	
 	private void LoadFields ( Field[] fields, List<FieldData> into )
 	{
+		for ( Field field : fields )
+		{
+			FieldData data = new FieldData ();
+			data.Info = field;
+			
+			// Calculate the hash and check for collisions
+			short hash = Crc16.Calc(field.getName());
+			boolean collided = false;
+			
+			for ( FieldData cur : into )
+			{
+				if ( cur.Hash.OriginalHash == hash )
+				{
+					cur.Hash.ActualHash = 0;
+					collided = true;
+					break;
+				}
+			}
+			
+			data.Hash = new NameHash ();
+			data.Hash.OriginalHash = hash;
+			data.Hash.Name = field.getName();
+			data.Hash.ActualHash = collided ? 0 : hash;
+			
+			// Check if it's required
+			data.Required = field.getAnnotation(Required.class) != null;
+			
+			into.add(data);
+		}
 	}
 }

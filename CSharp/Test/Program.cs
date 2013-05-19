@@ -27,6 +27,10 @@ namespace Test
             msg.varOther = new OtherMessage();
             msg.varOther.varXXX = 100;
             msg.requiredField = "";
+            msg.varRepeatedInt = new int[] { 1, 2, 3, 4, 5 };
+            msg.varRepeatedOther = new OtherMessage[2] { new OtherMessage(), new OtherMessage() };
+            msg.varRepeatedOther[0].varXXX = 1000;
+            msg.varRepeatedOther[1].varXXX = 2000;
 
             var into = new FileStream("output.txt", FileMode.Create);
             manager.Serialize(msg, @into);

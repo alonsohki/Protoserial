@@ -36,6 +36,8 @@ namespace Protoserial
         private readonly Dictionary<Type, ISerializationMethod> mMethods = new Dictionary<Type, ISerializationMethod>();
         private readonly ISerializationMethod[] mMethodsByID = new ISerializationMethod[256];
         private readonly ISerializationMethod mInnerSerializer;
+        private static byte END_OF_FIELDS_TYPE_ID = 0;
+        private static byte REPEATED_FIELD_TYPE_ID = 1;
 
         public Manager()
         {
@@ -139,14 +141,37 @@ namespace Protoserial
                         type = enclosedType;
                     }
 
-                    WriteTypeID(type, @into);
-                    WriteHash(field.Hash, @into);
-                    WriteValue(type, value, @into);
+                    // Write repeated fields as [REPEATED_FIELD_TYPE_ID][Hash][length][entry type][entries...]
+                    if (type.IsArray)
+                    {
+                        into.WriteByte(REPEATED_FIELD_TYPE_ID);
+                        WriteHash(field.Hash, @into);
+
+                        // Write the array count
+                        var array = value as Array;
+                        VarIntSerializer.WriteUInt32((uint)array.Length, @into);
+
+                        // Write the array inner object type id
+                        var arrayEntryType = field.Info.FieldType.GetElementType();
+                        WriteTypeID(arrayEntryType, @into);
+
+                        // Write the array entries
+                        foreach ( var arrayEntry in array )
+                        {
+                            WriteValue(arrayEntryType, arrayEntry, @into);
+                        }
+                    }
+                    else
+                    {
+                        WriteTypeID(type, @into);
+                        WriteHash(field.Hash, @into);
+                        WriteValue(type, value, @into);
+                    }
                 }
             }
 
             // Write a byte set to zero to mark the end of the type
-            into.WriteByte(0);
+            into.WriteByte(END_OF_FIELDS_TYPE_ID);
         }
 
         public object Deserialize(Stream from)
@@ -162,37 +187,71 @@ namespace Protoserial
 
                 // Read all the fields
                 byte typeID;
-                while ((typeID = ReadTypeID(@from)) != 0)
+                while ((typeID = ReadTypeID(@from)) != END_OF_FIELDS_TYPE_ID)
                 {
                     hash = ReadHash(from);
 
                     FieldData data = GetFieldForHash(hash, entry);
                     if (data == null)
                     {
+                        uint count = 1;
+                        if ( typeID == REPEATED_FIELD_TYPE_ID )
+                        {
+                            count = VarIntSerializer.ReadUInt32(@from);
+                            if (count > 0)
+                            {
+                                // Get the type ID of the array entries
+                                typeID = ReadTypeID(@from);
+                            }
+                        }
+                        if (mMethodsByID[typeID] == null)
+                                throw new UnknownTypeException("");
+
                         // Request for a field that we don't know. This probably means that the peer
                         // is using a newer version of the message and has added new fields. Skip the
                         // type bytes.
-                        if ( mMethodsByID[typeID] == null )
-                            throw new UnknownTypeException("");
-                        mMethodsByID[typeID].Read(@from);
-                    }
-                    if (data != null)
-                    {
-                        var type = data.Info.FieldType;
-
-                        // Handle nullable types
-                        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof (Nullable<>))
+                        while (count > 0)
                         {
-                            var enclosedType = type.GetGenericArguments()[0];
-                            var value = ReadValue(enclosedType, from);
-                            if (value != null)
+                            mMethodsByID[typeID].Read(@from);
+                            --count;
+                        }
+                    }
+                    else
+                    {
+                        // Check for repeated fields
+                        uint count = 1;
+                        if (typeID == REPEATED_FIELD_TYPE_ID)
+                        {
+                            var type = data.Info.FieldType.GetElementType();
+                            count = VarIntSerializer.ReadUInt32(@from);
+                            
+                            typeID = ReadTypeID(@from);
+                            var array = Array.CreateInstance(type, count);
+                            for ( var i = 0; i < count; ++i )
                             {
-                                data.Info.SetValue(o, value);
+                                array.SetValue(ReadValue(type, @from), i);
                             }
+
+                            data.Info.SetValue(o, array);
                         }
                         else
                         {
-                            data.Info.SetValue(o, ReadValue(type, from));
+                            var type = data.Info.FieldType;
+
+                            // Handle nullable types
+                            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof (Nullable<>))
+                            {
+                                var enclosedType = type.GetGenericArguments()[0];
+                                var value = ReadValue(enclosedType, from);
+                                if (value != null)
+                                {
+                                    data.Info.SetValue(o, value);
+                                }
+                            }
+                            else
+                            {
+                                data.Info.SetValue(o, ReadValue(type, from));
+                            }
                         }
                     }
                 }
@@ -308,6 +367,18 @@ namespace Protoserial
             else
             {
                 throw new UnknownTypeException(type.Name);
+            }
+        }
+
+        private object ReadValue(byte typeID, Stream @from)
+        {
+            if (mMethodsByID[typeID] != null)
+            {
+                return mMethodsByID[typeID].Read(@from);
+            }
+            else
+            {
+                throw new UnknownTypeException("");
             }
         }
 

@@ -17,6 +17,9 @@ namespace Test
         public string varString;
         public OtherMessage varOther;
 
+        public int[] varRepeatedInt;
+        public OtherMessage[] varRepeatedOther;
+
         [Required] public string requiredField;
     }
 }

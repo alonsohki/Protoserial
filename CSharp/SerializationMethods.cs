@@ -6,7 +6,7 @@ namespace Protoserial.Methods
 {
     class SerializeInt16 : ISerializationMethod
     {
-        public byte GetMethodID() { return 1; }
+        public byte GetMethodID() { return 10; }
 
         public object Read(Stream @from)
         {
@@ -32,7 +32,7 @@ namespace Protoserial.Methods
 
     class SerializeUInt16 : ISerializationMethod
     {
-        public byte GetMethodID() { return 2; }
+        public byte GetMethodID() { return 11; }
 
         public object Read(Stream @from)
         {
@@ -47,7 +47,7 @@ namespace Protoserial.Methods
 
     class SerializeInt32 : ISerializationMethod
     {
-        public byte GetMethodID() { return 3; }
+        public byte GetMethodID() { return 12; }
 
         public object Read(Stream @from)
         {
@@ -73,7 +73,7 @@ namespace Protoserial.Methods
 
     class SerializeUInt32 : ISerializationMethod
     {
-        public byte GetMethodID() { return 4; }
+        public byte GetMethodID() { return 13; }
 
         public object Read(Stream @from)
         {
@@ -88,7 +88,7 @@ namespace Protoserial.Methods
 
     class SerializeInt64 : ISerializationMethod
     {
-        public byte GetMethodID() { return 5; }
+        public byte GetMethodID() { return 14; }
 
         public object Read(Stream @from)
         {
@@ -114,7 +114,7 @@ namespace Protoserial.Methods
 
     class SerializeUInt64 : ISerializationMethod
     {
-        public byte GetMethodID() { return 6; }
+        public byte GetMethodID() { return 15; }
 
         public object Read(Stream @from)
         {
@@ -129,7 +129,7 @@ namespace Protoserial.Methods
 
     class SerializeFloat : ISerializationMethod
     {
-        public byte GetMethodID() { return 7; }
+        public byte GetMethodID() { return 16; }
 
         public object Read(Stream @from)
         {
@@ -147,7 +147,7 @@ namespace Protoserial.Methods
 
     class SerializeDouble : ISerializationMethod
     {
-        public byte GetMethodID() { return 8; }
+        public byte GetMethodID() { return 17; }
 
         public object Read(Stream @from)
         {
@@ -165,7 +165,7 @@ namespace Protoserial.Methods
 
     class SerializeString : ISerializationMethod
     {
-        public byte GetMethodID() { return 9; }
+        public byte GetMethodID() { return 18; }
 
         public object Read(Stream @from)
         {
@@ -191,7 +191,7 @@ namespace Protoserial.Methods
             mManager = manager;
         }
 
-        public byte GetMethodID() { return 10; }
+        public byte GetMethodID() { return 19; }
 
         public object Read(Stream @from)
         {

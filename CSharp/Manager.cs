@@ -198,11 +198,8 @@ namespace Protoserial
                         if ( typeID == REPEATED_FIELD_TYPE_ID )
                         {
                             count = VarIntSerializer.ReadUInt32(@from);
-                            if (count > 0)
-                            {
-                                // Get the type ID of the array entries
-                                typeID = ReadTypeID(@from);
-                            }
+                            // Get the type ID of the array entries
+                            typeID = ReadTypeID(@from);
                         }
                         if (mMethodsByID[typeID] == null)
                                 throw new UnknownTypeException("");

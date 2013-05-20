@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using Protoserial.Methods;
 
 namespace Protoserial
@@ -137,7 +135,7 @@ namespace Protoserial
                     if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof (Nullable<>))
                     {
                         var enclosedType = type.GetGenericArguments()[0];
-                        value = type.GetProperty("Value").GetValue(value);
+                        value = type.GetProperty("Value").GetValue(value, null);
                         type = enclosedType;
                     }
 
@@ -287,7 +285,8 @@ namespace Protoserial
                     newField.Hash.ActualHash = 0;
                 }
 
-                newField.Required = field.GetCustomAttribute<Required>() != null;
+                var requiredAttrs = field.GetCustomAttributes(typeof(Required), false);
+                newField.Required = requiredAttrs.Length > 0;
                 newField.Info = field;
 
                 into.Add(newField);
